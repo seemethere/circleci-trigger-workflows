@@ -1,0 +1,11 @@
+github_labels:
+  # These could potentially even be expanded to auto-include 
+  # based off of changed file paths
+  - github_label: ci/binaries
+    circleci_parameter: run_binary_workflow
+  - github_label: ci/macos
+    circleci_parameter: run_macos_workflow
+  - github_label: ci/ios
+    circleci_parameter: run_ios_workflow
+  - github_label: ci/windows
+    circleci_parameter: run_windows_workflow
