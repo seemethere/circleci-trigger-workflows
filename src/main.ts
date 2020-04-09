@@ -1,19 +1,19 @@
-import * as core from '@actions/core'
-import {wait} from './wait'
+// @format
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import * as config from './config';
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`)
-
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    core.setOutput('time', new Date().toTimeString())
+    const token = core.getInput('repo-token', {required: true});
+    // let circleToken = core.getInput('circleci-token', {required: true});
+    const configPath = core.getInput('configuration-path', {required: true});
+    const client = new github.GitHub(token);
+    const labels = await config.getLabels(client, configPath);
+    core.debug(JSON.stringify(labels));
   } catch (error) {
-    core.setFailed(error.message)
+    core.setFailed(error.stack);
   }
 }
 
-run()
+run();

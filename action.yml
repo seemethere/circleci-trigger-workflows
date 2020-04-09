@@ -1,10 +1,12 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'circleci-trigger-workflows'
+description: 'TODO'
+author: 'Eli Uriegas'
 inputs:
-  myInput:              # change this
-    description: 'input description here'
-    default: 'default value if applicable'
+  repo-token:
+    description: 'Github token to do github operations'
+  configuration-path:
+    description: 'Path to look for the configuration at'
+    default: '.github/circleci-triggers.yml'
 runs:
   using: 'node12'
   main: 'dist/index.js'
