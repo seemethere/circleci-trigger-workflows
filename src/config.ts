@@ -37,33 +37,67 @@ export async function fetchConfig(
   //@ts-ignore
   return Buffer.from(content, encoding).toString();
 }
-
-export interface GithubLabel {
-  labelName: string;
-  circleciParameter: string;
-}
-
 export async function genLabelMapFromConfig(
   content: string
-): Promise<GithubLabel[]> {
-  const ret = new Array<GithubLabel>();
+): Promise<Map<string, string>> {
+  const ret = new Map<string, string>();
   const configObj = yaml.safeLoad(content);
   core.debug(JSON.stringify(configObj));
   for (const label of configObj.github_labels) {
     core.debug(`label -> ${JSON.stringify(label)}`);
-    const labelObj: GithubLabel = {
-      labelName: label.github_label as string,
-      circleciParameter: label.circleci_parameter as string
-    };
-    ret.push(labelObj);
+    ret.set(label.github_label as string, label.circleci_parameter as string);
     core.debug(`${label.github_label} -> ${label.circleci_parameter}`);
   }
   return ret;
 }
 
-export async function getLabels(
+export async function getLabelsFromConfig(
   client: github.GitHub,
   configPath: string
-): Promise<GithubLabel[]> {
+): Promise<Map<string, string>> {
   return genLabelMapFromConfig(await fetchConfig(client, configPath));
+}
+
+export async function getAppliedLabels(
+  client: github.GitHub,
+  prNumber: number
+): Promise<Set<string>> {
+  core.info(`Grabbing issue labels for issue #${prNumber}`);
+  const {data: currentLabels, status} = await client.issues.listLabelsOnIssue({
+    ...github.context.repo,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    issue_number: prNumber
+  });
+  if (status !== 200) {
+    throw Error(`Error grabbing labels for ${prNumber}: ${currentLabels}`);
+  }
+  return new Set<string>(currentLabels.map(l => l.name));
+}
+
+export async function getCircleCIParameters(
+  client: github.GitHub,
+  configPath: string
+): Promise<Map<string, boolean>> {
+  const parameters = new Map<string, boolean>();
+  const configLabels = await getLabelsFromConfig(client, configPath);
+  // Check if we're on a pull request
+  if (github.context.payload.pull_request) {
+    const appliedLabels = await getAppliedLabels(
+      client,
+      github.context.payload.pull_request.number
+    );
+    for (const label of appliedLabels) {
+      if (configLabels.get(label)) {
+        parameters.set(configLabels.get(label) as string, true);
+      }
+    }
+  } else {
+    core.info(
+      'Detecting non PR branch, choosing to check all parameters as true'
+    );
+    for (const parameter of configLabels.values()) {
+      parameters.set(parameter, true);
+    }
+  }
+  return parameters;
 }
